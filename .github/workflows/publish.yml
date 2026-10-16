@@ -1,0 +1,98 @@
+name: Prepare or publish release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag matching the package version
+        required: true
+        type: string
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pypi-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.repository == 'reflection-oss/beam-verifier'
+    # The exported repository has no organization runners available.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.10.10"
+      - name: Require the release tag to match the package version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+        run: |
+          python - <<'PY'
+          import os
+          import tomllib
+
+          with open("pyproject.toml", "rb") as source:
+              version = tomllib.load(source)["project"]["version"]
+          expected = f"v{version}"
+          if os.environ["RELEASE_TAG"] != expected:
+              raise SystemExit(f"Release tag must be {expected}")
+          PY
+      - name: Test and build distributions
+        env:
+          REFLECTION_CI_WHEEL_DIR: ${{ github.workspace }}/dist
+        run: bash ./ci.sh
+      - name: Check distribution metadata
+        # Twine 7 supports the Core Metadata 2.5 emitted by the build backend.
+        run: uvx --python 3.12 --from 'twine>=7.0.0' twine check --strict dist/*
+      - name: Install as a new user without project overrides
+        run: |
+          uv venv --python 3.12 "$RUNNER_TEMP/consumer"
+          uv --no-config pip install --python "$RUNNER_TEMP/consumer/bin/python" dist/*.whl
+          uv --no-config pip check --python "$RUNNER_TEMP/consumer/bin/python"
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/consumer/bin/beam-verifier" --version
+          "$RUNNER_TEMP/consumer/bin/beam-verifier" list-datasets
+          "$RUNNER_TEMP/consumer/bin/python" - <<'PY'
+          import inspect_ai.model
+
+
+          # Construct the real provider offline to catch incompatible SDK imports.
+          inspect_ai.model.get_model(
+              "openai-api/beam-verifier/smoke-test",
+              base_url="http://127.0.0.1:1/v1",
+              api_key="smoke-test",
+          )
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: distributions
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    # Manual runs only validate. A published GitHub release is required to upload.
+    if: github.repository == 'reflection-oss/beam-verifier' && github.event_name == 'release'
+    # The exported repository has no organization runners available.
+    runs-on: ubuntu-24.04
+    environment:
+      name: pypi
+      url: https://pypi.org/project/beam-verifier/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: distributions
+          path: dist
+      - name: Publish to PyPI using trusted publishing
+        uses: pypa/gh-action-pypi-publish@release/v1

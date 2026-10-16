@@ -1,0 +1,12 @@
+temperature: 0.7
+top_p: 0.99
+reasoning_effort: max
+harness_kwargs:
+  epochs: 16
+prompt_factory:
+  name: beam-gpqa-v1
+  system_text: |-
+    You are an expert in answering questions about STEM subjects.
+    You are given some examples as well as a question and a list of choices.
+    You need to answer the question based on the choices and the explanation provided.
+    Always respond with the letter corresponding to the best answer.

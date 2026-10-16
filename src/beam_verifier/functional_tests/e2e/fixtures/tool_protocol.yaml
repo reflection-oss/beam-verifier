@@ -1,0 +1,282 @@
+test_tool_call_shape:
+  test_name: test_tool_call_shape
+  test_params:
+    case:
+    - case_id: "basic"
+      input:
+        messages:
+        - content: What's the weather like in San Francisco?
+          role: user
+        tools:
+        - function:
+            description: Get current temperature for a given location.
+            name: get_weather
+            parameters:
+              additionalProperties: false
+              properties:
+                location:
+                  description: "City and country e.g. Bogot\xE1, Colombia"
+                  type: string
+              required:
+              - location
+              type: object
+          type: function
+    - case_id: "user_provided_system_prompt"
+      input:
+        messages:
+        - content: You are a helpful assistant that can use tools to get information.
+          role: system
+        - content: What's the weather like in San Francisco?
+          role: user
+        tools:
+        - function:
+            description: Get current temperature for a given location.
+            name: get_weather
+            parameters:
+              additionalProperties: false
+              properties:
+                location:
+                  description: "City and country e.g. Bogot\xE1, Colombia"
+                  type: string
+              required:
+              - location
+              type: object
+          type: function
+    - case_id: "array_param"
+      input:
+        messages:
+        - role: user
+          content: "Please add a new product with name 'Widget', price 19.99, in stock, and tags ['new', 'sale'] and give me the product id."
+        tools:
+        - function:
+            description: Add a new product
+            name: addProduct
+            parameters:
+              type: object
+              properties:
+                name:
+                  description: "Name of the product"
+                  type: string
+                price:
+                  description: "Price of the product"
+                  type: number
+                inStock:
+                  description: "Availability status of the product."
+                  type: boolean
+                tags:
+                  description: "List of product tags"
+                  type: array
+                  items:
+                    type: string
+              required: ["name", "price", "inStock"]
+          type: function
+
+test_parallel_tool_calls:
+  test_name: test_parallel_tool_calls
+  test_params:
+    case:
+    - case_id: "same_tool"
+      input:
+        messages:
+        - content: What's the weather like in Paris and in Tokyo right now?
+          role: user
+        tools:
+        - function:
+            description: Get current temperature for a given location.
+            name: get_weather
+            parameters:
+              additionalProperties: false
+              properties:
+                location:
+                  description: "City and country e.g. Bogot\xE1, Colombia"
+                  type: string
+              required:
+              - location
+              type: object
+          type: function
+      expected:
+        min_tool_calls: 2
+    - case_id: "distinct_tools"
+      input:
+        messages:
+        - content: What's the weather like in Paris right now, and what time is it in Tokyo?
+          role: user
+        tools:
+        - function:
+            description: Get current temperature for a given location.
+            name: get_weather
+            parameters:
+              additionalProperties: false
+              properties:
+                location:
+                  description: "City and country e.g. Bogot\xE1, Colombia"
+                  type: string
+              required:
+              - location
+              type: object
+          type: function
+        - function:
+            description: Get the current local time for a given location.
+            name: get_local_time
+            parameters:
+              additionalProperties: false
+              properties:
+                location:
+                  description: "City and country e.g. Bogot\xE1, Colombia"
+                  type: string
+              required:
+              - location
+              type: object
+          type: function
+      expected:
+        min_tool_calls: 2
+
+test_tool_choice_required:
+  test_name: test_tool_choice_required
+  test_params:
+    case:
+    - case_id: "basic"
+      input:
+        messages:
+        - content: "Say hello without using tools. If a tool is mandatory, use San Francisco as the location."
+          role: user
+        tools:
+        - function:
+            description: Get current temperature for a given location.
+            name: get_weather
+            parameters:
+              type: object
+              additionalProperties: false
+              properties:
+                location:
+                  description: "City and country e.g. Bogotá, Colombia"
+                  type: string
+              required:
+              - location
+          type: function
+        tool_choice: "required"
+
+test_tool_choice_none:
+  test_name: test_tool_choice_none
+  test_params:
+    case:
+    - case_id: "basic"
+      input:
+        messages:
+        - content: What's the weather like in San Francisco?
+          role: user
+        tools:
+        - function:
+            description: Get current temperature for a given location.
+            name: get_weather
+            parameters:
+              type: object
+              additionalProperties: false
+              properties:
+                location:
+                  description: "City and country e.g. Bogotá, Colombia"
+                  type: string
+              required:
+              - location
+          type: function
+        tool_choice: "none"
+      expected:
+        # Should not make tool calls when tool_choice is "none"
+        no_tool_calls: true
+
+test_tool_result_grounding:
+  test_name: test_tool_result_grounding
+  test_params:
+    case:
+    - case_id: "single_result"
+      input:
+        messages:
+        - role: user
+          content: What's the weather like in San Francisco?
+        - role: assistant
+          reasoning_content: I should look up the current weather in San Francisco.
+          tool_calls:
+          - id: call_weather_sf
+            type: function
+            function:
+              name: get_weather
+              arguments: '{"location": "San Francisco, CA"}'
+        - role: tool
+          tool_call_id: call_weather_sf
+          content: "70 degrees Fahrenheit and foggy"
+        tools:
+        - function:
+            description: Get current temperature for a given location.
+            name: get_weather
+            parameters:
+              additionalProperties: false
+              properties:
+                location:
+                  description: "City and country e.g. Bogot\xE1, Colombia"
+                  type: string
+              required:
+              - location
+              type: object
+          type: function
+      expected:
+        answer: ["foggy", "70"]
+
+named_function:
+  - case_id: selected_function_called_for_unrelated_prompt
+    input:
+      messages:
+        - role: user
+          content: Tell me one interesting fact about Paris.
+      tools: &choice_tools
+        - type: function
+          function:
+            name: get_weather
+            description: Get the current weather for a city.
+            parameters:
+              type: object
+              properties:
+                location: {type: string}
+              required: [location]
+              additionalProperties: false
+        - type: function
+          function:
+            name: get_local_time
+            description: Get the current local time for a city.
+            parameters:
+              type: object
+              properties:
+                location: {type: string}
+              required: [location]
+              additionalProperties: false
+      tool_choice:
+        type: function
+        function:
+          name: get_local_time
+
+automatic_choice:
+  - case_id: text_or_tool_call
+    input:
+      messages:
+        - role: user
+          content: Tell me something about Paris. You may check its weather if useful.
+      tools: *choice_tools
+
+tool_roundtrip:
+  - case_id: generated_call_result_followup
+    input:
+      messages:
+        - role: user
+          content: What is the current weather in San Francisco? Include the temperature and conditions.
+      tools:
+        - type: function
+          function:
+            name: get_weather
+            parameters:
+              type: object
+              properties:
+                location: {type: string}
+              required: [location]
+              additionalProperties: false
+    tool_result: "Current weather: 17 degrees Celsius, foggy."
+    expected:
+      answer: ["17", "foggy"]

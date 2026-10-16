@@ -1,0 +1,10 @@
+temperature: 0.7
+top_p: 0.99
+reasoning_effort: max
+harness_kwargs:
+  epochs: 64
+prompt_factory:
+  name: beam-aime-v1
+  user_template: |-
+    Solve the following problem and output the final answer within \boxed{{}}.
+    {prompt}

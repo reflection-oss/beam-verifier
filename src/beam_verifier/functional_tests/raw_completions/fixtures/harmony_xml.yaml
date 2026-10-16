@@ -1,0 +1,112 @@
+profile: harmony_xml
+cases:
+  - case_id: final_answer
+    request:
+      prompt: |-
+        <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+        Reasoning effort: 512
+
+        # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>user<|message|>What is 2 + 2?<|end|><|start|>assistant
+      max_tokens: 4096
+      stream: false
+      n: 1
+      skip_special_tokens: false
+    tools: []
+  - case_id: builtin_tool_available
+    request:
+      prompt: |-
+        <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+        Reasoning effort: 512
+
+        # Tools
+
+        // Execute a bash command. The output contains the command's stdout and stderr.
+        // Commands time out after 10 minutes. You can set a shorter timeout within the bash command.
+        type bash = (_: {
+        // The command to execute
+        command: string,
+        }) => any;
+
+        # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>user<|message|>Use bash to run `printf 4`. Make exactly one tool call and do not answer directly.<|end|><|start|>assistant
+      max_tokens: 4096
+      stream: false
+      n: 1
+      skip_special_tokens: false
+    tools:
+      - type: function
+        function:
+          name: bash
+          parameters:
+            type: object
+            properties:
+              command: {type: string}
+            required: [command]
+    builtin_tools: [bash]
+    expected_shape: single_tool
+    expected_builtin_tool: true
+  - case_id: tool_available
+    request:
+      prompt: |-
+        <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+        Reasoning effort: 512
+
+        # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>developer<|message|># Tools
+
+        // Get the current weather for a city.
+        type weather = (_: {
+        city: string,
+        }) => any;<|end|><|start|>user<|message|>Check the current weather in Paris.<|end|><|start|>assistant
+      max_tokens: 4096
+      stream: false
+      n: 1
+      skip_special_tokens: false
+    tools: &weather_tools
+      - type: function
+        function:
+          name: weather
+          parameters:
+            type: object
+            properties:
+              city: {type: string}
+            required: [city]
+    expected_shape: single_tool
+  - case_id: parallel_tools_available
+    request:
+      prompt: |-
+        <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+        Reasoning effort: 512
+
+        # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>developer<|message|># Tools
+
+        // Get the current weather for a city.
+        type weather = (_: {
+        city: string,
+        }) => any;<|end|><|start|>user<|message|>Check the current weather in Paris and Tokyo using parallel tool calls.<|end|><|start|>assistant
+      max_tokens: 4096
+      stream: false
+      n: 1
+      skip_special_tokens: false
+    tools: *weather_tools
+    expected_shape: parallel_tool
+
+  - case_id: continuation_with_preserved_reasoning
+    # The codeword appears only in prior analysis, with no withholding instruction.
+    request:
+      prompt: |-
+        <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+        Reasoning effort: 512
+
+        # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>user<|message|>Choose a codeword for a fictional example. Acknowledge with Ready.<|end|><|start|>assistant<|channel|>analysis<|message|>The codeword is marigold.<|end|><|start|>assistant<|channel|>final<|message|>Ready.<|return|><|start|>user<|message|>Now provide the codeword you chose. Reply with the word only.<|end|><|start|>assistant
+      max_tokens: 4096
+      stream: false
+      n: 1
+      skip_special_tokens: false
+    tools: []
+    expected_shape: final_only
+    expected_final_content:
+    - marigold

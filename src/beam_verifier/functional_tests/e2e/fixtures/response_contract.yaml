@@ -1,0 +1,94 @@
+# Structured-output cases: `response_format.json_schema.schema` is the source
+# of truth the response content is validated against; every key in `expected`
+# must then match the parsed content exactly.
+test_chat_structured_output:
+  test_name: test_chat_structured_output
+  test_params:
+    case:
+    - case_id: "extract"
+      input:
+        messages:
+        - content: Your task is to extract the name of the person from the following text.
+          role: system
+        - content: I'm John Doe.
+          role: user
+        response_format:
+          json_schema:
+            name: extract_name
+            schema:
+              properties:
+                name:
+                  type: string
+              required:
+              - name
+              title: ExtractName
+              type: object
+          type: json_schema
+      expected:
+        name: John Doe
+    - case_id: "extract_typed_fields"
+      input:
+        messages:
+        - content: Extract the order details from the user's message.
+          role: system
+        - content: "Order #123: 3 units of the Widget at 19.99 dollars each, with express shipping."
+          role: user
+        response_format:
+          json_schema:
+            name: extract_order
+            schema:
+              properties:
+                order_id:
+                  type: integer
+                quantity:
+                  type: integer
+                unit_price:
+                  type: number
+                express:
+                  type: boolean
+              required:
+              - order_id
+              - quantity
+              - unit_price
+              - express
+              title: ExtractOrder
+              type: object
+          type: json_schema
+      expected:
+        order_id: 123
+        quantity: 3
+        unit_price: 19.99
+        express: true
+    - case_id: "extract_enum_and_list"
+      input:
+        messages:
+        - content: Classify the sentiment of the user's message and list the product names it mentions.
+          role: system
+        - content: I love the Widget and the Gadget, they're fantastic!
+          role: user
+        response_format:
+          json_schema:
+            name: classify_sentiment
+            schema:
+              properties:
+                sentiment:
+                  enum:
+                  - positive
+                  - negative
+                  - neutral
+                  type: string
+                products:
+                  items:
+                    type: string
+                  type: array
+              required:
+              - sentiment
+              - products
+              title: ClassifySentiment
+              type: object
+          type: json_schema
+      expected:
+        sentiment: positive
+        products:
+        - Widget
+        - Gadget
