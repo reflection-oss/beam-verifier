@@ -32,7 +32,7 @@ the [Beam Verifier developer docs](https://developers.reflection.ai/beam-verifie
 Requires Python 3.12 or later and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-uv tool install .
+uv tool install beam-verifier
 beam-verifier list-datasets   # confirms the install; no endpoint needed
 ```
 
