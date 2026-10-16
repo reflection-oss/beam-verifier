@@ -1,0 +1,61 @@
+# Request-parameter values.
+# `accepted`: every value must be accepted. The canonical decoding values for
+#   the model (provisional pre-launch: they mirror the DeepSeek-R1 settings
+#   until the real immutable spec replaces them).
+# `rejected`: every value must be refused with HTTP 400. Today these sit far
+#   outside the OpenAI API domains (or are wrongly typed), so any conformant
+#   deployment rejects them unambiguously; at launch, add the schema-valid
+#   values the immutable decoding spec forbids.
+input_parameters_values:
+- {name: temperature, accepted: [0.6], rejected: [-300, "hot"]}
+- {name: top_p, accepted: [0.95], rejected: [42]}
+- {name: presence_penalty, accepted: [0], rejected: [-100]}
+- {name: frequency_penalty, accepted: [0], rejected: [100]}
+- {name: reasoning_effort, accepted: [low, medium, high, xhigh, max], rejected: [ultra, 32]}
+
+prior_turn_reasoning_cases:
+- case_id: prior_turn_reasoning_is_available
+  input:
+    messages:
+    - role: user
+      content: >-
+        Pick a codeword for this session and remember it. Reply with the single word Ready when you have picked it.
+    - role: assistant
+      reasoning_content: I will use marigold as this session's codeword.
+      content: Ready.
+    - role: user
+      content: What codeword did you pick? Reply with the word only.
+  expected:
+    answer: marigold
+
+test_malformed_request_rejected:
+  test_name: test_malformed_request_rejected
+  test_params:
+    case:
+    - case_id: "messages_missing"
+      input:
+        messages: []
+    - case_id: "messages_role_invalid"
+      input:
+        messages:
+        - content: Which planet do humans live on?
+          role: fake_role
+    - case_id: "tool_choice_invalid"
+      input:
+        messages:
+        - content: Which planet do humans live on?
+          role: user
+        tool_choice: invalid
+    - case_id: "tool_choice_no_tools"
+      input:
+        messages:
+        - content: Which planet do humans live on?
+          role: user
+        tool_choice: required
+    - case_id: "tools_type_invalid"
+      input:
+        messages:
+        - content: Which planet do humans live on?
+          role: user
+        tools:
+        - type: invalid

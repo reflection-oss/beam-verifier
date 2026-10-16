@@ -1,0 +1,83 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "beam-verifier"
+version = "0.1.0rc1"
+description = "Basic eval library: reproduce benchmark scores and verify endpoint behavior against any OpenAI-compatible endpoint."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+classifiers = [
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  "openai>=2.45.0,<3.0.0",
+  "httpx>=0.28.1",
+  "pydantic>=2",
+  "pyyaml",
+  "click",
+  "rich",
+  "python-dotenv",
+  "pytest",
+  "pytest-json-report>=1.5.0",
+  "jsonschema",
+  "inspect-ai>=0.3.258,<0.3.259",
+  "inspect-evals>=0.18.0",
+  "math-verify>=0.9.0",
+  "anyio>=4",
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy>=2.3.1",
+  "portpicker>=1.6.0",
+  "pytest-asyncio",
+  "ruff==0.15.1",
+  "types-jsonschema>=4.0",
+  "types-pyyaml>=6.0.12.20260815",
+]
+
+[project.scripts]
+beam-verifier = "beam_verifier.cli:cli"
+
+[tool.hatch.build.targets.wheel]
+sources = ["src"]
+packages = ["src/beam_verifier"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src",
+  "/tests",
+  "/pyproject.toml",
+  "/README.md",
+  "/LICENSE",
+  "/NOTICE",
+]
+exclude = ["**/BUILD", "**/BUILD.bazel", "**/OWNERS"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "source_checkout: verifies behavior specific to an editable source checkout",
+]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "src"
+packages = ["beam_verifier"]
+
+[[tool.mypy.overrides]]
+# Math-Verify ships no py.typed marker.
+module = ["math_verify"]
+ignore_missing_imports = true

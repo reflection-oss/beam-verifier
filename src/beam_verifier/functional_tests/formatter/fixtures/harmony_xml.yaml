@@ -1,0 +1,810 @@
+render_cases:
+- case_id: builtin_tool_roundtrip_preserves_reasoning
+  input:
+    messages:
+    - role: user
+      content: Run bash.
+    - role: assistant
+      reasoning_content: Check the shell.
+      tool_calls:
+      - id: call_bash
+        type: function
+        function:
+          name: bash
+          arguments: '{"command":"ls"}'
+    - role: tool
+      tool_call_id: call_bash
+      content: file.txt
+    - role: assistant
+      reasoning_content: The file is present.
+      content: Found it.
+    - role: user
+      content: What did you find?
+    add_generation_prompt: true
+    add_special_tokens: false
+    tools:
+    - &id000
+      type: function
+      function:
+        name: bash
+        description: Run bash.
+        parameters:
+          type: object
+          properties:
+            command:
+              type: string
+          required:
+          - command
+    chat_template_kwargs:
+      builtin_tools:
+      - bash
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 512
+
+    # Tools
+
+    // Execute a bash command. The output contains the command's stdout and stderr.
+    // Commands time out after 10 minutes. You can set a shorter timeout within the bash command.
+    type bash = (_: {
+    // The command to execute
+    command: string,
+    }) => any;
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>user<|message|>Run bash.<|end|><|start|>assistant<|channel|>analysis<|message|>Check the shell.<|end|><|start|>assistant to=bash<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter name="command">
+    ls
+    </rfl:parameter><|call|><|start|>bash to=assistant<|channel|>analysis<|message|>file.txt<|end|><|start|>assistant<|channel|>analysis<|message|>The file is present.<|end|><|start|>assistant<|channel|>final<|message|>Found it.<|return|><|start|>user<|message|>What did you find?<|end|><|start|>assistant
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 20, 16, 17, 271, 2, 13852, 271, 322, 20848, 264, 27023, 3210, 13, 576, 2550,
+    5610, 279, 3210, 594, 20075, 323, 26436, 624, 322, 47183, 882, 700, 1283, 220, 16, 15, 4420, 13, 1446,
+    646, 738, 264, 23327, 9632, 2878, 279, 27023, 3210, 624, 1313, 27023, 284, 5453, 25, 341, 322, 576, 3210,
+    311, 9026, 198, 5631, 25, 914, 345, 5410, 589, 894, 401, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434,
+    1969, 387, 5230, 369, 1449, 1943, 13, 151670, 151669, 872, 151671, 6727, 27023, 13, 151670, 151669,
+    77091, 151672, 34484, 151671, 3973, 279, 12528, 13, 151670, 151669, 77091, 311, 22086, 988, 151672,
+    34484, 220, 151673, 6455, 151671, 151679, 5631, 881, 4730, 151680, 151675, 151669, 46216, 311, 28, 77091,
+    151672, 34484, 151671, 1192, 3909, 151670, 151669, 77091, 151672, 34484, 151671, 785, 1034, 374, 3042,
+    13, 151670, 151669, 77091, 151672, 11822, 151671, 6650, 432, 13, 151674, 151669, 872, 151671, 3838, 1521,
+    498, 1477, 30, 151670, 151669, 77091]
+- case_id: plain_conversation
+  input:
+    messages:
+    - role: system
+      content: You are helpful.
+    - role: user
+      content: Hello!
+    - role: assistant
+      content: Hi there!
+      reasoning_content: Thinking...
+    add_generation_prompt: false
+    add_special_tokens: false
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 512
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>developer<|message|># Instructions
+
+    You are helpful.<|end|><|start|>user<|message|>Hello!<|end|><|start|>assistant<|channel|>analysis<|message|>Thinking...<|end|><|start|>assistant<|channel|>final<|message|>Hi there!<|return|>
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 20, 16, 17, 271, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387,
+    5230, 369, 1449, 1943, 13, 151670, 151669, 34401, 151671, 2, 38297, 271, 2610, 525, 10950, 13, 151670,
+    151669, 872, 151671, 9707, 0, 151670, 151669, 77091, 151672, 34484, 151671, 93945, 1112, 151670, 151669,
+    77091, 151672, 11822, 151671, 13048, 1052, 0, 151674]
+- case_id: generation_prompt
+  input:
+    messages:
+    - role: user
+      content: What is 2+2?
+    add_generation_prompt: true
+    add_special_tokens: false
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 512
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>user<|message|>What is 2+2?<|end|><|start|>assistant
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 20, 16, 17, 271, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387,
+    5230, 369, 1449, 1943, 13, 151670, 151669, 872, 151671, 3838, 374, 220, 17, 10, 17, 30, 151670, 151669,
+    77091]
+- case_id: system_slot_omits_developer_block
+  input:
+    messages:
+    - role: user
+      content: Hi
+    add_generation_prompt: false
+    add_special_tokens: false
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 512
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>user<|message|>Hi<|end|>
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 20, 16, 17, 271, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387,
+    5230, 369, 1449, 1943, 13, 151670, 151669, 872, 151671, 13048, 151670]
+- case_id: system_slot_empty_text_omits_developer_block
+  input:
+    messages:
+    - role: system
+      content: ''
+    - role: user
+      content: Hi
+    add_generation_prompt: false
+    add_special_tokens: false
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 512
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>user<|message|>Hi<|end|>
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 20, 16, 17, 271, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387,
+    5230, 369, 1449, 1943, 13, 151670, 151669, 872, 151671, 13048, 151670]
+- case_id: system_block_without_reasoning_effort
+  input:
+    messages:
+    - role: user
+      content: Hello!
+    add_generation_prompt: false
+    add_special_tokens: false
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 512
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>user<|message|>Hello!<|end|>
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 20, 16, 17, 271, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387,
+    5230, 369, 1449, 1943, 13, 151670, 151669, 872, 151671, 9707, 0, 151670]
+- case_id: system_block_with_reasoning_effort
+  input:
+    messages:
+    - role: user
+      content: Hello!
+    add_generation_prompt: false
+    add_special_tokens: false
+    chat_template_kwargs:
+      reasoning_effort: 128
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 128
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>user<|message|>Hello!<|end|>
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 16, 17, 23, 271, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387,
+    5230, 369, 1449, 1943, 13, 151670, 151669, 872, 151671, 9707, 0, 151670]
+- case_id: function_tool_definitions
+  input:
+    messages:
+    - role: user
+      content: Weather in London?
+    add_generation_prompt: false
+    add_special_tokens: false
+    tools:
+    - type: function
+      function:
+        name: weather
+        description: Get the weather for a given location.
+        parameters:
+          type: object
+          properties:
+            location:
+              type: string
+              description: The location to get the weather for.
+          required:
+          - location
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 512
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>developer<|message|># Tools
+
+    // Get the weather for a given location.
+    type weather = (_: {
+    // The location to get the weather for.
+    location: string,
+    }) => any;<|end|><|start|>user<|message|>Weather in London?<|end|>
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 20, 16, 17, 271, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387,
+    5230, 369, 1449, 1943, 13, 151670, 151669, 34401, 151671, 2, 13852, 271, 322, 2126, 279, 9104, 369, 264,
+    2661, 3728, 624, 1313, 9104, 284, 5453, 25, 341, 322, 576, 3728, 311, 633, 279, 9104, 369, 624, 2527, 25,
+    914, 345, 5410, 589, 894, 26, 151670, 151669, 872, 151671, 28981, 304, 7148, 30, 151670]
+- case_id: empty_reasoning
+  input:
+    messages:
+    - role: user
+      content: Hi
+    - role: assistant
+      content: Hello.
+    add_generation_prompt: false
+    add_special_tokens: false
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 512
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>user<|message|>Hi<|end|><|start|>assistant<|channel|>analysis<|message|><|end|><|start|>assistant<|channel|>final<|message|>Hello.<|return|>
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 20, 16, 17, 271, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387,
+    5230, 369, 1449, 1943, 13, 151670, 151669, 872, 151671, 13048, 151670, 151669, 77091, 151672, 34484,
+    151671, 151670, 151669, 77091, 151672, 11822, 151671, 9707, 13, 151674]
+- case_id: tool_call_preamble_dropped
+  input:
+    messages:
+    - role: user
+      content: Weather in London?
+    - role: assistant
+      content: Let me check the weather for you.
+      tool_calls:
+      - id: call_1
+        type: function
+        function:
+          name: weather
+          arguments: '{"location": "London"}'
+      reasoning_content: Look it up.
+    add_generation_prompt: false
+    add_special_tokens: false
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 512
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>user<|message|>Weather in London?<|end|><|start|>assistant<|channel|>analysis<|message|>Look it up.<|end|><|start|>assistant to=weather<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter name="location">
+    London
+    </rfl:parameter><|call|>
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 20, 16, 17, 271, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387,
+    5230, 369, 1449, 1943, 13, 151670, 151669, 872, 151671, 28981, 304, 7148, 30, 151670, 151669, 77091,
+    151672, 34484, 151671, 10380, 432, 705, 13, 151670, 151669, 77091, 311, 28, 15206, 151672, 34484, 220,
+    151673, 6455, 151671, 151679, 2527, 881, 39572, 151680, 151675]
+- case_id: system_developer_tools_and_user
+  input:
+    messages:
+    - role: system
+      content: be concise
+    - role: user
+      content: Weather?
+    add_generation_prompt: true
+    add_special_tokens: false
+    tools:
+    - &id001
+      type: function
+      function:
+        name: weather
+        description: Get weather for a location
+        parameters:
+          type: object
+          properties:
+            location:
+              type: string
+              description: City name
+          required:
+          - location
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 512
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>developer<|message|># Instructions
+
+    be concise
+
+    # Tools
+
+    // Get weather for a location
+    type weather = (_: {
+    // City name
+    location: string,
+    }) => any;<|end|><|start|>user<|message|>Weather?<|end|><|start|>assistant
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 20, 16, 17, 271, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387,
+    5230, 369, 1449, 1943, 13, 151670, 151669, 34401, 151671, 2, 38297, 271, 1371, 63594, 271, 2, 13852, 271,
+    322, 2126, 9104, 369, 264, 3728, 198, 1313, 9104, 284, 5453, 25, 341, 322, 4311, 829, 198, 2527, 25, 914,
+    345, 5410, 589, 894, 26, 151670, 151669, 872, 151671, 28981, 30, 151670, 151669, 77091]
+- case_id: tools_only_developer_block
+  input:
+    messages:
+    - role: user
+      content: go
+    add_generation_prompt: false
+    add_special_tokens: false
+    tools:
+    - type: function
+      function:
+        name: search
+        description: Search
+        parameters:
+          type: object
+          properties:
+            q:
+              type: string
+          required:
+          - q
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 512
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>developer<|message|># Tools
+
+    // Search
+    type search = (_: {
+    q: string,
+    }) => any;<|end|><|start|>user<|message|>go<|end|>
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 20, 16, 17, 271, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387,
+    5230, 369, 1449, 1943, 13, 151670, 151669, 34401, 151671, 2, 13852, 271, 322, 7542, 198, 1313, 2711, 284,
+    5453, 25, 341, 80, 25, 914, 345, 5410, 589, 894, 26, 151670, 151669, 872, 151671, 3346, 151670]
+- case_id: tool_round_trip
+  input:
+    messages:
+    - role: user
+      content: Weather?
+    - role: assistant
+      tool_calls:
+      - id: c1
+        type: function
+        function:
+          name: weather
+          arguments: '{"location": "London"}'
+      reasoning_content: Checking.
+    - role: tool
+      name: weather
+      content: sunny
+      tool_call_id: c1
+    - role: assistant
+      content: Sunny.
+    add_generation_prompt: false
+    add_special_tokens: false
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 512
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>user<|message|>Weather?<|end|><|start|>assistant<|channel|>analysis<|message|>Checking.<|end|><|start|>assistant to=weather<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter name="location">
+    London
+    </rfl:parameter><|call|><|start|>weather to=assistant<|channel|>analysis<|message|>sunny<|end|><|start|>assistant<|channel|>analysis<|message|><|end|><|start|>assistant<|channel|>final<|message|>Sunny.<|return|>
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 20, 16, 17, 271, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387,
+    5230, 369, 1449, 1943, 13, 151670, 151669, 872, 151671, 28981, 30, 151670, 151669, 77091, 151672, 34484,
+    151671, 40129, 13, 151670, 151669, 77091, 311, 28, 15206, 151672, 34484, 220, 151673, 6455, 151671,
+    151679, 2527, 881, 39572, 151680, 151675, 151669, 15206, 311, 28, 77091, 151672, 34484, 151671, 82,
+    27297, 151670, 151669, 77091, 151672, 34484, 151671, 151670, 151669, 77091, 151672, 11822, 151671, 50,
+    27297, 13, 151674]
+- case_id: parallel_xml_calls
+  input:
+    messages:
+    - role: user
+      content: both?
+    - role: assistant
+      tool_calls:
+      - id: c1
+        type: function
+        function:
+          name: a
+          arguments: '{"x": 1}'
+      - id: c2
+        type: function
+        function:
+          name: b
+          arguments: '{"y": 2}'
+    add_generation_prompt: false
+    add_special_tokens: false
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 512
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>user<|message|>both?<|end|><|start|>assistant<|channel|>analysis<|message|><|end|><|start|>assistant to=a<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter name="x">
+    1
+    </rfl:parameter><|end|><|start|>assistant to=b<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter name="y">
+    2
+    </rfl:parameter><|call|>
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 20, 16, 17, 271, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387,
+    5230, 369, 1449, 1943, 13, 151670, 151669, 872, 151671, 21028, 30, 151670, 151669, 77091, 151672, 34484,
+    151671, 151670, 151669, 77091, 311, 24239, 151672, 34484, 220, 151673, 6455, 151671, 151679, 87, 881, 16,
+    151680, 151670, 151669, 77091, 311, 22086, 151672, 34484, 220, 151673, 6455, 151671, 151679, 88, 881, 17,
+    151680, 151675]
+- case_id: tool_call_typed_argument
+  input:
+    messages:
+    - role: user
+      content: go
+    - role: assistant
+      tool_calls:
+      - id: c1
+        type: function
+        function:
+          name: fn
+          arguments: '{"s": "hi", "b": true, "n": 1.5, "arr": [1, 2], "obj": {"zebra": 1, "apple": {"yak": "y",
+            "bee": "b"}}, "objs": [{"zulu": 1, "alpha": 2}]}'
+      reasoning_content: t
+    add_generation_prompt: false
+    add_special_tokens: false
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 512
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>user<|message|>go<|end|><|start|>assistant<|channel|>analysis<|message|>t<|end|><|start|>assistant to=fn<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter name="s">
+    hi
+    </rfl:parameter>
+    <rfl:parameter name="b">
+    true
+    </rfl:parameter>
+    <rfl:parameter name="n">
+    1.5
+    </rfl:parameter>
+    <rfl:parameter name="arr">
+    [1, 2]
+    </rfl:parameter>
+    <rfl:parameter name="obj">
+    {"zebra": 1, "apple": {"yak": "y", "bee": "b"}}
+    </rfl:parameter>
+    <rfl:parameter name="objs">
+    [{"zulu": 1, "alpha": 2}]
+    </rfl:parameter><|call|>
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 20, 16, 17, 271, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387,
+    5230, 369, 1449, 1943, 13, 151670, 151669, 872, 151671, 3346, 151670, 151669, 77091, 151672, 34484,
+    151671, 83, 151670, 151669, 77091, 311, 28, 8822, 151672, 34484, 220, 151673, 6455, 151671, 151679, 82,
+    881, 6023, 151680, 198, 151679, 65, 881, 1866, 151680, 198, 151679, 77, 881, 16, 13, 20, 151680, 198,
+    151679, 1118, 881, 58, 16, 11, 220, 17, 60, 151680, 198, 151679, 2295, 881, 4913, 2986, 14383, 788, 220,
+    16, 11, 330, 22377, 788, 5212, 88, 585, 788, 330, 88, 497, 330, 32031, 788, 330, 65, 30975, 151680, 198,
+    151679, 88327, 881, 58, 4913, 89, 24411, 788, 220, 16, 11, 330, 7141, 788, 220, 17, 25439, 151680,
+    151675]
+- case_id: builtin_bash_system_weather_developer
+  input:
+    messages:
+    - role: user
+      content: Weather?
+    add_generation_prompt: false
+    add_special_tokens: false
+    tools:
+    - type: function
+      function:
+        name: bash
+        description: Run bash.
+        parameters:
+          type: string
+    - *id001
+    chat_template_kwargs:
+      builtin_tools:
+      - bash
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 512
+
+    # Tools
+
+    ## bash
+
+    Run bash.
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>developer<|message|># Tools
+
+    // Get weather for a location
+    type weather = (_: {
+    // City name
+    location: string,
+    }) => any;<|end|><|start|>user<|message|>Weather?<|end|>
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 20, 16, 17, 271, 2, 13852, 271, 565, 27023, 271, 6727, 27023, 382, 2, 7818,
+    11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387, 5230, 369, 1449, 1943, 13, 151670, 151669, 34401,
+    151671, 2, 13852, 271, 322, 2126, 9104, 369, 264, 3728, 198, 1313, 9104, 284, 5453, 25, 341, 322, 4311,
+    829, 198, 2527, 25, 914, 345, 5410, 589, 894, 26, 151670, 151669, 872, 151671, 28981, 30, 151670]
+- case_id: multi_property_tool
+  input:
+    messages:
+    - role: user
+      content: hi
+    add_generation_prompt: false
+    add_special_tokens: false
+    tools:
+    - type: function
+      function:
+        name: search
+        description: Search things.
+        parameters:
+          type: object
+          properties:
+            query:
+              type: string
+              description: The query.
+            limit:
+              type: integer
+              description: Max results.
+            safe:
+              type: boolean
+            sort:
+              type: string
+              enum:
+              - asc
+              - desc
+              description: Sort order.
+            tags:
+              type: array
+              items:
+                type: string
+              description: Tags.
+            nested:
+              type: object
+              properties:
+                a:
+                  type: number
+              required:
+              - a
+          required:
+          - query
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 512
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>developer<|message|># Tools
+
+    // Search things.
+    type search = (_: {
+    // The query.
+    query: string,
+    // Max results.
+    limit?: number,
+    safe?: boolean,
+    // Sort order.
+    sort?: "asc" | "desc",
+    // Tags.
+    tags?: string[],
+    nested?: {
+        a: number,
+        },
+    }) => any;<|end|><|start|>user<|message|>hi<|end|>
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 20, 16, 17, 271, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387,
+    5230, 369, 1449, 1943, 13, 151670, 151669, 34401, 151671, 2, 13852, 271, 322, 7542, 2513, 624, 1313,
+    2711, 284, 5453, 25, 341, 322, 576, 3239, 624, 1631, 25, 914, 345, 322, 7487, 3059, 624, 9506, 4820,
+    1372, 345, 18675, 4820, 2710, 345, 322, 15967, 1973, 624, 6860, 4820, 330, 5061, 1, 760, 330, 8614, 756,
+    322, 27683, 624, 14082, 4820, 914, 45649, 59271, 4820, 341, 262, 264, 25, 1372, 345, 262, 1153, 5410,
+    589, 894, 26, 151670, 151669, 872, 151671, 6023, 151670]
+- case_id: developer_instructions
+  input:
+    messages:
+    - role: developer
+      content: Be brief.
+    - role: user
+      content: Hello
+    add_generation_prompt: true
+    add_special_tokens: false
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 512
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>developer<|message|># Instructions
+
+    Be brief.<|end|><|start|>user<|message|>Hello<|end|><|start|>assistant
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 20, 16, 17, 271, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387,
+    5230, 369, 1449, 1943, 13, 151670, 151669, 34401, 151671, 2, 38297, 271, 3430, 9814, 13, 151670, 151669,
+    872, 151671, 9707, 151670, 151669, 77091]
+- case_id: reasoning_effort_low
+  input:
+    messages:
+    - role: user
+      content: Hello
+    add_generation_prompt: true
+    add_special_tokens: false
+    chat_template_kwargs:
+      reasoning_effort: low
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 32
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>user<|message|>Hello<|end|><|start|>assistant
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 18, 17, 271, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387, 5230,
+    369, 1449, 1943, 13, 151670, 151669, 872, 151671, 9707, 151670, 151669, 77091]
+- case_id: assistant_reasoning_and_final_history
+  input:
+    messages:
+    - role: user
+      content: Hello
+    - role: assistant
+      reasoning_content: Think carefully.
+      content: Hi!
+    - role: user
+      content: Continue.
+    - role: assistant
+      reasoning_content: Think again.
+      content: Another answer.
+    - role: user
+      content: One more.
+    add_generation_prompt: true
+    add_special_tokens: false
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 512
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>user<|message|>Hello<|end|><|start|>assistant<|channel|>analysis<|message|>Think carefully.<|end|><|start|>assistant<|channel|>final<|message|>Hi!<|return|><|start|>user<|message|>Continue.<|end|><|start|>assistant<|channel|>analysis<|message|>Think again.<|end|><|start|>assistant<|channel|>final<|message|>Another answer.<|return|><|start|>user<|message|>One more.<|end|><|start|>assistant
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 20, 16, 17, 271, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387,
+    5230, 369, 1449, 1943, 13, 151670, 151669, 872, 151671, 9707, 151670, 151669, 77091, 151672, 34484,
+    151671, 38687, 15516, 13, 151670, 151669, 77091, 151672, 11822, 151671, 13048, 0, 151674, 151669, 872,
+    151671, 23526, 13, 151670, 151669, 77091, 151672, 34484, 151671, 38687, 1549, 13, 151670, 151669, 77091,
+    151672, 11822, 151671, 14037, 4226, 13, 151674, 151669, 872, 151671, 3966, 803, 13, 151670, 151669,
+    77091]
+- case_id: unicode_and_whitespace
+  input:
+    messages:
+    - role: user
+      content: "  München \"Altstadt\"\nnext line  "
+    add_generation_prompt: true
+    add_special_tokens: false
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 512
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>user<|message|>  München "Altstadt"
+    next line  <|end|><|start|>assistant
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 20, 16, 17, 271, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387,
+    5230, 369, 1449, 1943, 13, 151670, 151669, 872, 151671, 220, 89266, 330, 26017, 44278, 698, 3600, 1555,
+    256, 151670, 151669, 77091]
+- case_id: reasoning_effort_medium
+  input:
+    messages:
+    - role: user
+      content: Hello
+    add_generation_prompt: true
+    add_special_tokens: false
+    chat_template_kwargs:
+      reasoning_effort: medium
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 64
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>user<|message|>Hello<|end|><|start|>assistant
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 21, 19, 271, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387, 5230,
+    369, 1449, 1943, 13, 151670, 151669, 872, 151671, 9707, 151670, 151669, 77091]
+- case_id: reasoning_effort_high
+  input:
+    messages:
+    - role: user
+      content: Hello
+    add_generation_prompt: true
+    add_special_tokens: false
+    chat_template_kwargs:
+      reasoning_effort: high
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 128
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>user<|message|>Hello<|end|><|start|>assistant
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 16, 17, 23, 271, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387,
+    5230, 369, 1449, 1943, 13, 151670, 151669, 872, 151671, 9707, 151670, 151669, 77091]
+- case_id: reasoning_effort_max
+  input:
+    messages:
+    - role: user
+      content: Hello
+    add_generation_prompt: true
+    add_special_tokens: false
+    chat_template_kwargs:
+      reasoning_effort: max
+  expected_prompt: |-
+    <|start|>system<|message|>You are Beam, an AI assistant trained by Reflection.
+
+    Reasoning effort: 512
+
+    # Valid channels: analysis, final. Channel must be included for every message.<|end|><|start|>user<|message|>Hello<|end|><|start|>assistant
+  expected_tokens: [151669, 8948, 151671, 2610, 525, 50130, 11, 458, 15235, 17847, 16176, 553, 42876, 382,
+    25139, 287, 5041, 25, 220, 20, 16, 17, 271, 2, 7818, 11744, 25, 6358, 11, 1590, 13, 13434, 1969, 387,
+    5230, 369, 1449, 1943, 13, 151670, 151669, 872, 151671, 9707, 151670, 151669, 77091]
+rejection_cases:
+- case_id: reject_embedded_harmony_in_assistant
+  input:
+    messages:
+    - role: user
+      content: Hello
+    - role: assistant
+      reasoning_content: Greet.
+      content: <|channel|>final<|message|>Hi
+    - role: user
+      content: Hello
+    add_generation_prompt: true
+    add_special_tokens: false
+- case_id: reject_reserved_parameter_delimiter
+  input:
+    messages:
+    - role: user
+      content: Hello
+    - role: assistant
+      content: null
+      reasoning_content: Look it up.
+      tool_calls:
+      - id: call_bad
+        type: function
+        function:
+          name: weather
+          arguments: '{"location":"</rfl:parameter>"}'
+    - role: tool
+      tool_call_id: call_bad
+      content: done
+    add_generation_prompt: true
+    add_special_tokens: false
+- case_id: reject_non_object_arguments
+  input:
+    messages:
+    - role: user
+      content: Weather in London?
+    - role: assistant
+      content: Let me check the weather for you.
+      tool_calls:
+      - id: call_1
+        type: function
+        function:
+          name: weather
+          arguments: '"not an object"'
+      reasoning_content: Look it up.
+    add_generation_prompt: false
+    add_special_tokens: false
+- case_id: reject_assistant_turn_without_reasoning
+  input:
+    messages:
+    - role: user
+      content: Weather in London?
+    - role: assistant
+      content: null
+      tool_calls:
+      - id: call_1
+        type: function
+        function:
+          name: weather
+          arguments: '{"location":"London"}'
+    - role: tool
+      tool_call_id: call_1
+      content: sunny
+    add_generation_prompt: true
+    add_special_tokens: false
+- case_id: reject_unknown_reasoning_effort
+  input:
+    messages:
+    - role: user
+      content: Hi
+    chat_template_kwargs:
+      reasoning_effort: extreme
+- case_id: reject_empty_messages
+  input:
+    messages: []
+    add_generation_prompt: true
+    add_special_tokens: false
+- case_id: reject_tool_message_without_name_or_matching_call
+  input:
+    messages:
+    - role: user
+      content: Weather in London?
+    - role: assistant
+      reasoning_content: Look it up.
+      tool_calls:
+      - id: call_1
+        type: function
+        function:
+          name: weather
+          arguments: '{"location":"London"}'
+    - role: tool
+      tool_call_id: call_other
+      content: sunny
+    add_generation_prompt: true
+    add_special_tokens: false

@@ -1,0 +1,255 @@
+[
+  {
+    "id": "final-only",
+    "completion": "<|channel|>analysis<|message|>think<|end|><|start|>assistant<|channel|>final<|message|>answer<|return|>",
+    "tools": [],
+    "builtins": [],
+    "probe": null,
+    "ok": true,
+    "truncated": false
+  },
+  {
+    "id": "no-call",
+    "completion": "<|channel|>analysis<|message|>think<|end|><|start|>assistant<|channel|>final<|message|>answer<|return|>",
+    "tools": [
+      "weather"
+    ],
+    "builtins": [],
+    "probe": null,
+    "ok": true,
+    "truncated": false
+  },
+  {
+    "id": "single-tool",
+    "completion": "<|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather<|channel|>analysis <|constrain|>xml<|message|><|call|>",
+    "tools": [
+      "weather"
+    ],
+    "builtins": [],
+    "probe": null,
+    "ok": true,
+    "truncated": false
+  },
+  {
+    "id": "parallel-tool",
+    "completion": "<|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather<|channel|>analysis <|constrain|>xml<|message|><|end|><|start|>assistant to=weather<|channel|>analysis <|constrain|>xml<|message|><|call|>",
+    "tools": [
+      "weather"
+    ],
+    "builtins": [],
+    "probe": null,
+    "ok": true,
+    "truncated": false
+  },
+  {
+    "id": "builtin-tool",
+    "completion": "<|channel|>analysis<|message|>think<|end|><|start|>assistant to=bash<|channel|>analysis <|constrain|>xml<|message|><|call|>",
+    "tools": [
+      "bash"
+    ],
+    "builtins": [
+      "bash"
+    ],
+    "probe": null,
+    "ok": true,
+    "truncated": false
+  },
+  {
+    "id": "empty-generation",
+    "completion": "",
+    "tools": [],
+    "builtins": [],
+    "probe": null,
+    "ok": false,
+    "truncated": true
+  },
+  {
+    "id": "partial-analysis",
+    "completion": "<|channel|>analysis<|message|>thinking",
+    "tools": [],
+    "builtins": [],
+    "probe": null,
+    "ok": false,
+    "truncated": true
+  },
+  {
+    "id": "partial-final",
+    "completion": "<|channel|>analysis<|message|>think<|end|><|start|>assistant<|channel|>final<|message|>answer",
+    "tools": [],
+    "builtins": [],
+    "probe": null,
+    "ok": false,
+    "truncated": true
+  },
+  {
+    "id": "trace-first-failure",
+    "completion": "<|start|>user<|message|>Hi<|end|><|start|>assistant<|channel|>final<|message|>bad<|return|><|start|>user<|message|>Again<|end|><|start|>assistant<|channel|>analysis<|message|>think<|end|><|start|>assistant<|channel|>final<|message|>answer<|return|>",
+    "tools": [],
+    "builtins": [],
+    "probe": "mandatory_first_analysis",
+    "ok": false,
+    "truncated": false
+  },
+  {
+    "id": "valid-integer-parameter",
+    "completion": "<|channel|>analysis<|message|>think<|end|><|start|>assistant to=tool<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter name=\"value\">\n3\n</rfl:parameter><|call|>",
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "tool",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "value"
+            ]
+          }
+        }
+      }
+    ],
+    "builtins": [],
+    "probe": null,
+    "ok": true,
+    "truncated": false
+  },
+  {
+    "id": "valid-number-parameter",
+    "completion": "<|channel|>analysis<|message|>think<|end|><|start|>assistant to=tool<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter name=\"value\">\n3.25\n</rfl:parameter><|call|>",
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "tool",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "value"
+            ]
+          }
+        }
+      }
+    ],
+    "builtins": [],
+    "probe": null,
+    "ok": true,
+    "truncated": false
+  },
+  {
+    "id": "valid-boolean-parameter",
+    "completion": "<|channel|>analysis<|message|>think<|end|><|start|>assistant to=tool<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter name=\"value\">\ntrue\n</rfl:parameter><|call|>",
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "tool",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "value"
+            ]
+          }
+        }
+      }
+    ],
+    "builtins": [],
+    "probe": null,
+    "ok": true,
+    "truncated": false
+  },
+  {
+    "id": "valid-null-parameter",
+    "completion": "<|channel|>analysis<|message|>think<|end|><|start|>assistant to=tool<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter name=\"value\">\nnull\n</rfl:parameter><|call|>",
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "tool",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "value"
+            ]
+          }
+        }
+      }
+    ],
+    "builtins": [],
+    "probe": null,
+    "ok": true,
+    "truncated": false
+  },
+  {
+    "id": "valid-object-parameter",
+    "completion": "<|channel|>analysis<|message|>think<|end|><|start|>assistant to=tool<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter name=\"value\">\n{\"x\": 1}\n</rfl:parameter><|call|>",
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "tool",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "value"
+            ]
+          }
+        }
+      }
+    ],
+    "builtins": [],
+    "probe": null,
+    "ok": true,
+    "truncated": false
+  },
+  {
+    "id": "valid-array-parameter",
+    "completion": "<|channel|>analysis<|message|>think<|end|><|start|>assistant to=tool<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter name=\"value\">\n[1, 2]\n</rfl:parameter><|call|>",
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "tool",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "array"
+              }
+            },
+            "required": [
+              "value"
+            ]
+          }
+        }
+      }
+    ],
+    "builtins": [],
+    "probe": null,
+    "ok": true,
+    "truncated": false
+  }
+]
