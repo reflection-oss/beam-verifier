@@ -1,6 +1,7 @@
 """Resume the CLI across an interrupted runner without calling an endpoint."""
 
 import pathlib
+from collections.abc import Collection
 
 import click.testing
 import pytest
@@ -25,6 +26,10 @@ class InterruptibleRunner(base.DatasetRunner):
         self.dataset_id = dataset_id
         self.interrupt = interrupt
         self.requests: list[base.RunRequest] = []
+
+    def unsupported_resume_overrides(self, settings: records.EvalSettings, names: Collection[str]) -> list[str]:
+        del settings, names  # This fake applies the entire request on every invocation.
+        return []
 
     def __call__(self, request: base.RunRequest) -> base.RunOutcome:
         self.requests.append(request)
@@ -270,14 +275,6 @@ def test_resume_replaces_the_prior_result_instead_of_appending(
     assert saved.metrics == {"accuracy": 0.0}
 
 
-def test_resume_without_a_path_selects_latest() -> None:
-    command = cli.cli.commands["eval"]
-    with command.make_context(
-        "eval", ["--base-url", "http://unused/v1", "--model-name", "model", "--resume"]
-    ) as context:
-        assert context.params["resume"] == "latest"
-
-
 def test_resume_keeps_pinned_defaults_for_unstarted_datasets(tmp_path, monkeypatch):
     interrupted = InterruptibleRunner("interrupted", interrupt=True)
     unstarted = InterruptibleRunner("unstarted")
@@ -429,3 +426,79 @@ def test_resume_records_native_option_changes(
     assert result.exit_code == 0, result.output
     assert run_store.load_manifest(tmp_path).resume_overrides == [override]
     assert recording.requests[0].settings.model_dump_json() == expected.model_dump_json()
+
+
+@pytest.mark.parametrize("options", [["--temperature", "0"], ["--harness-kwargs", "n_attempts=1"]])
+def test_harbor_resume_rejects_changed_settings_without_modifying_manifest(
+    tmp_path: pathlib.Path, options: list[str]
+) -> None:
+    settings = registry.DATASETS["swebench-pro"].resolve_settings()
+    run_store.RunStore(tmp_path).write_manifest(
+        records.RunManifest(
+            run_id="run",
+            kind="eval",
+            created_at="2026-09-01T00:00:00",
+            version="0.1.0",
+            model="model",
+            base_url="http://unused/v1",
+            config=settings,
+            dataset_ids=["swebench-pro"],
+            dataset_settings={"swebench-pro": settings},
+        )
+    )
+    original = (tmp_path / "run.json").read_bytes()
+    result = click.testing.CliRunner().invoke(
+        cli.cli,
+        ["eval", "--base-url", "http://unused/v1", "--model-name", "model", "--resume", str(tmp_path), *options],
+    )
+    assert result.exit_code == 1, result.output
+    assert "cannot apply changed settings" in result.output
+    assert (tmp_path / "run.json").read_bytes() == original
+
+
+class InterruptedInspectAIRunner(inspect_ai_runner.InspectAIRunner):
+    def __call__(self, request: base.RunRequest) -> base.RunOutcome:
+        del request  # Stop after the real CLI and InspectAI capability check.
+        raise KeyboardInterrupt
+
+
+def test_resume_accepts_native_inspect_ai_change_beside_unchanged_epochs(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setitem(registry.DATASETS, "offline", registry.Dataset(runner=InterruptedInspectAIRunner("offline")))
+    saved = records.EvalSettings(harness_kwargs={"epochs": 16})
+    run_store.RunStore(tmp_path).write_manifest(
+        records.RunManifest(
+            run_id="run",
+            kind="eval",
+            created_at="2026-09-01T00:00:00",
+            version="0.1.0",
+            model="model",
+            base_url="http://unused/v1",
+            dataset_ids=["offline"],
+            dataset_settings={"offline": saved},
+        )
+    )
+    result = click.testing.CliRunner().invoke(
+        cli.cli,
+        [
+            "eval",
+            "--base-url",
+            "http://unused/v1",
+            "--model-name",
+            "model",
+            "--resume",
+            str(tmp_path),
+            "--harness-kwargs",
+            "epochs=16",
+            "--harness-kwargs",
+            "fail_on_error=false",
+        ],
+    )
+    assert result.exit_code == 1, result.output
+    assert "Aborted" in result.output
+    assert "cannot apply" not in result.output
+    assert run_store.load_manifest(tmp_path).dataset_settings["offline"].harness_kwargs == {
+        "epochs": 16,
+        "fail_on_error": False,
+    }

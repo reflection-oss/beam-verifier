@@ -1,0 +1,28 @@
+{
+  "event": "end",
+  "task_name": "example-task",
+  "config": {
+    "trial_name": "example-attempt",
+    "task": {"path": "example-task"}
+  },
+  "result": {
+    "task_name": "example-task",
+    "trial_name": "example-attempt",
+    "trial_uri": "file:///example-attempt",
+    "task_id": {"path": "example-task"},
+    "task_checksum": "fixture",
+    "config": {"task": {"path": "example-task"}},
+    "agent_info": {"name": "mirror", "version": "0.1.8"},
+    "verifier_result": {"rewards": {"reward": 1.0}}
+  },
+  "lock": {
+    "task": {
+      "name": "example-task",
+      "type": "local",
+      "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "agent": {"name": "mirror"},
+    "environment": {},
+    "verifier": {}
+  }
+}

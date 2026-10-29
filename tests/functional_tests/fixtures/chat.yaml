@@ -1,0 +1,92 @@
+completion:
+  content: fine
+  tool_calls: []
+  reasoning_content: think first
+  finish_reason: stop
+weather_tool: &weather_tool
+  type: function
+  function:
+    name: get_weather
+    parameters:
+      type: object
+      properties:
+        location: {type: string}
+      required: [location]
+tool_call: &weather_call
+  id: c1
+  type: function
+  function: {name: get_weather, arguments: '{"location": "SF"}'}
+invalid_responses:
+- id: missing_reasoning
+  response: {reasoning_content: null}
+  error: no reasoning_content
+- id: reasoning_duplicated_into_content
+  response:
+    content: |-
+      step by step reasoning that is long enough to be a real chain of thought
+      The answer is 4.
+    reasoning_content: step by step reasoning that is long enough to be a real chain of thought
+  error: reasoning_content duplicated
+- id: special_token_in_content
+  response: {content: the answer<|return|>}
+  error: special token
+- id: incomplete_generation
+  response: {finish_reason: length}
+  error: Incomplete generation
+- id: a_filtered_generation
+  response: {finish_reason: content_filter}
+  error: Incomplete generation
+- id: a_response_that_never_reported_how_it_ended
+  response: {finish_reason: null}
+  error: no finish_reason reported
+- id: half_formed_tool_call
+  response:
+    tool_calls:
+    - id: c1
+      type: function
+      function: {name: get_weather, arguments: '{"location": "SF'}
+    finish_reason: tool_calls
+  error: half-formed
+- id: unnamed_tool_call
+  response:
+    tool_calls:
+    - id: c1
+      type: function
+      function: {name: null, arguments: '{}'}
+    finish_reason: tool_calls
+  error: no function name
+- id: empty_tool_call_id
+  response:
+    tool_calls:
+    - id: ''
+      type: function
+      function: {name: get_weather, arguments: '{"location": "SF"}'}
+    finish_reason: tool_calls
+  error: empty id
+- id: duplicate_tool_call_ids
+  response:
+    tool_calls:
+    - *weather_call
+    - id: c1
+      type: function
+      function: {name: get_weather, arguments: '{"location": "Tokyo"}'}
+    finish_reason: tool_calls
+  error: not unique
+- id: repeated_parameter
+  response:
+    tool_calls:
+    - id: c1
+      type: function
+      function: {name: get_weather, arguments: '{"location": "SF", "location": "Tokyo"}'}
+    finish_reason: tool_calls
+  error: repeat keys \['location'\]
+- id: arguments_violating_declared_schema
+  response:
+    tool_calls:
+    - id: c1
+      type: function
+      function: {name: get_weather, arguments: '{"location": 42}'}
+    finish_reason: tool_calls
+  error: violate the declared schema
+  declared_tools:
+  - *weather_tool

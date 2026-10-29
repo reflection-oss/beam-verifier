@@ -1,0 +1,19 @@
+# Beam sampling and repetitions; every value can be overridden by the caller.
+temperature: 0.7
+top_p: 0.99
+reasoning_effort: max
+harness_kwargs:
+  n_attempts: 16
+  agents:
+    - kwargs:
+        mirror_kwargs:
+          tools: bash
+          use_native_bash: true
+          disable_compaction: true
+          max_iterations: 1000000
+prompt_factory:
+  name: beam-swe-v1
+  user_template: |-
+    Fix the following issue. The repository is checked out at `{workdir}`. When you are finished, state "Task complete".
+
+    {prompt}

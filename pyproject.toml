@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "arpy>=2.3.0"]
 build-backend = "hatchling.build"
 
 [project]
@@ -29,10 +29,18 @@ dependencies = [
   "inspect-evals>=0.18.0",
   "math-verify>=0.9.0",
   "anyio>=4",
+  "harbor==0.22.0",
+  "aiohttp>=3.12",
+  "asyncssh>=2.24.0",
+  "websockets>=14",
 ]
 
 [project.optional-dependencies]
+daytona = ["harbor[daytona]"]
 dev = [
+  "harbor[daytona]",
+  "arpy>=2.3.0",
+  "hatchling",
   "mypy>=2.3.1",
   "portpicker>=1.6.0",
   "pytest-asyncio",
@@ -45,14 +53,31 @@ dev = [
 beam-verifier = "beam_verifier.cli:cli"
 
 [tool.hatch.build.targets.wheel]
-sources = ["src"]
-packages = ["src/beam_verifier"]
+sources = []
+packages = ["beam_verifier"]
+
+[tool.hatch.build.hooks.custom]
+path = "hatch_build.py"
+# Ship the exact evaluated release, independent of the build host's platform.
+agent-version = "0.1.8"
+archive-sha256 = { x86_64 = "47683fcd2a58b297e1a49d60942f61153d8103d026176fe9abf7c34fd66df154", aarch64 = "a49fb85037ed077ca7f8c758f2d2c23b4bb29421fee71d8fa36dea45b355a158" }
+
+# The loader and libc must come from the same build. Revalidate Mirror startup,
+# DNS and tool execution on both architectures when changing these runtime pins.
+[tool.hatch.build.hooks.custom.runtime.libc6]
+url = "https://deb.debian.org/debian/pool/main/g/glibc/libc6_2.36-9+deb12u14_{architecture}.deb"
+sha256 = { x86_64 = "ba4f88f73dbc3ae9055f3c20f4523bfdbaf1ad13ff95e258924f77d20b4fbedf", aarch64 = "01f4330719fd4f65580e16ea5a0527f372fca750e8f588d26deaf09f2d3b1cf4" }
+
+[tool.hatch.build.hooks.custom.runtime.libgcc-s1]
+url = "https://deb.debian.org/debian/pool/main/g/gcc-12/libgcc-s1_12.2.0-14+deb12u1_{architecture}.deb"
+sha256 = { x86_64 = "3016e62cb4b7cd8038822870601f5ed131befe942774d0f745622cc77d8a88f7", aarch64 = "576926b283613db80168ddf76380a3bd877602778cf0d226caa7bfbfa71eacf3" }
 
 [tool.hatch.build.targets.sdist]
 include = [
-  "/src",
+  "/beam_verifier",
   "/tests",
   "/pyproject.toml",
+  "/hatch_build.py",
   "/README.md",
   "/LICENSE",
   "/NOTICE",
@@ -74,10 +99,15 @@ ignore = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"
-mypy_path = "src"
+mypy_path = "."
 packages = ["beam_verifier"]
 
 [[tool.mypy.overrides]]
 # Math-Verify ships no py.typed marker.
 module = ["math_verify"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Harbor does not ship a py.typed marker.
+module = ["harbor", "harbor.*"]
 ignore_missing_imports = true
