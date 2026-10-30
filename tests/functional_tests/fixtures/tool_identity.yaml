@@ -1,0 +1,30 @@
+- id: whitespace_variants_are_one_call
+  unique_count: 1
+  functions:
+  - {name: get_weather, arguments: '{"location": "Paris"}'}
+  - {name: get_weather, arguments: '{  "location":"Paris"  }'}
+- id: key_order_variants_are_one_call
+  unique_count: 1
+  functions:
+  - {name: add_product, arguments: '{"name": "Widget", "price": 19.99}'}
+  - {name: add_product, arguments: '{"price": 19.99, "name": "Widget"}'}
+- id: nested_key_order_variants_are_one_call
+  unique_count: 1
+  functions:
+  - {name: get_weather, arguments: '{"where": {"city": "Paris", "country": "France"}}'}
+  - {name: get_weather, arguments: '{"where": {"country": "France", "city": "Paris"}}'}
+- id: different_arguments_stay_distinct
+  unique_count: 2
+  functions:
+  - {name: get_weather, arguments: '{"location": "Paris"}'}
+  - {name: get_weather, arguments: '{"location": "Tokyo"}'}
+- id: same_arguments_on_different_tools_stay_distinct
+  unique_count: 2
+  functions:
+  - {name: get_weather, arguments: '{"location": "Paris"}'}
+  - {name: get_local_time, arguments: '{"location": "Paris"}'}
+- id: list_order_is_semantic
+  unique_count: 2
+  functions:
+  - {name: get_weather, arguments: '{"tags": ["new", "sale"]}'}
+  - {name: get_weather, arguments: '{"tags": ["sale", "new"]}'}

@@ -19,6 +19,8 @@ jobs:
           python-version: '3.12'
       - uses: astral-sh/setup-uv@v6
         with:
-          version: "0.10.10"
+          # Pinned to the first uv release with webpki-root-certs 1.0.10, which drops the
+          # compromised eMudhra root (INC-2436); any later release is safe.
+          version: "0.13.4"
       - name: Run ci.sh
         run: bash ./ci.sh

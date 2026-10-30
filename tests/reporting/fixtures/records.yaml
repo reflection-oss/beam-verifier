@@ -1,0 +1,96 @@
+manifest:
+  run_id: r
+  kind: eval
+  created_at: '2026-09-10T00:00:00'
+  version: 0.1.0
+  model: m
+  base_url: e
+  dataset_results:
+  - {dataset: tool-eval, topline_metric_name: accuracy, n: 1}
+failed_dataset: {dataset: aime2026, topline_metric_name: '', status: failed, error: task loading failed}
+traces:
+  tool_answer:
+    index: 0
+    request_hash: h
+    messages:
+    - {role: user, content: q}
+    content: ''
+    tool_calls:
+    - id: c1
+      function: calc_binomial_probability
+      arguments: {n: 20, k: 5}
+    score: 0.0
+  tool_conversation:
+    index: 0
+    request_hash: h
+    messages:
+    - {role: user, content: Please calculate six times seven.}
+    - role: assistant
+      content: ''
+      tool_calls:
+      - function: multiply
+        arguments: {a: 6, b: 7}
+      reasoning_content: thinking
+    - {role: tool, content: '42'}
+    content: ''
+    score: 1.0
+  plain_answer:
+    index: 1
+    request_hash: h2
+    messages:
+    - {role: user, content: plain question}
+    content: plain answer
+    score: 1.0
+  reasoning_answer:
+    index: 0
+    request_hash: h
+    messages:
+    - {role: user, content: 'What is 6 times 7?'}
+    - {role: assistant, content: '42', reasoning_content: Compute 6 * 7.}
+    content: '42'
+    score: 1.0
+  markup_values:
+    index: 0
+    request_hash: h
+    messages:
+    - {role: user, content: 'compare [a, b]'}
+    expected_answer: cosine(v=[1, 2])
+    content: ''
+    tool_calls:
+    - id: c1
+      function: cosine
+      arguments:
+        flags: [true, false]
+    error_type: EvalError
+    error_message: failed on [bold] input
+    score: 0.0
+    parsed_pred: cosine(v=[/])
+  markup_role:
+    index: 0
+    request_hash: h
+    messages:
+    - {role: '[/]', content: Please calculate six times seven.}
+    - {role: assistant, content: '', reasoning_content: Multiply the numbers}
+    content: ''
+    score: 1.0
+  text_and_tool:
+    index: 0
+    request_hash: h
+    messages: []
+    content: Let me look that up.
+    tool_calls:
+    - id: c1
+      function: search
+      arguments: {q: x}
+  graded_answer:
+    index: 0
+    request_hash: h
+    messages:
+    - {role: user, content: q}
+    expected_answer: B
+    content: The answer is B
+    finish_reason: stop
+    prompt_tokens: 10
+    completion_tokens: 5
+    score: 1.0
+    parsed_pred: B

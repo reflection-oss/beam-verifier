@@ -4,7 +4,7 @@ import json
 
 from beam_verifier import cli
 
-FUNCTIONAL_TESTS = "src/beam_verifier/functional_tests"
+FUNCTIONAL_TESTS = "beam_verifier/functional_tests"
 
 
 def _write_report(tmp_path, tests):

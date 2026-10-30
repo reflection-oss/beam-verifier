@@ -148,10 +148,19 @@ that name the violated property and the observed value, e.g.
 - **A red test against an in-progress deployment is a finding, not a suite
 bug.** Never weaken a contract to make an endpoint pass; if a value must
 wait for a fix, park it in the fixture with a comment saying why.
-- **Offline unit tests live in** `tests/` at the repo root and must run with
-no network. Pure logic (the dataset table, contract assertions, the InspectAI log
-parser, report aggregation) gets covered there. Anything that needs a live
-endpoint belongs in `functional_tests/`, never in `tests/`.
+- **Unit tests live in** `tests/` at the repo root and run without network.
+All pytest tests belong there except the suites run by `verify`, which live in
+`functional_tests/`. The benchmark integration test also stays in `tests/` and
+skips unless an endpoint is explicitly supplied; the ordinary test run is offline.
+- **Mirror the package tree under `tests/`.** Put component tests and fixtures
+beside their matching test subtree, such as
+`tests/benchmarks/scaffolds/harbor/mirror/`. Tests covering several components
+belong at their lowest common parent. Keep package-wide CLI, option, and build
+checks at the test root.
+- **Reuse test examples.** Keep substantial static inputs in `fixtures/` beside
+their tests. Share examples and pytest fixtures at their lowest common parent;
+return fresh mutable values for each test. Keep setup and assertions in Python,
+with small case-specific values inline when they make the behavior clearer.
 
 ## Style
 
@@ -169,6 +178,15 @@ when the value's type is genuinely irrelevant to the code handling it.
 messages — never bare "Inspect" or "inspect". Lowercase `inspect` is reserved
 for the literal executable, and `inspect_ai` / `inspect_evals` / `inspect-ai`
 for module paths and the package name.
+- Keep docstrings short, self-explanatory, and readable. Use plain language,
+avoid unnecessary jargon, and use established names consistently, such as
+"host-side proxy".
+- Preserve precise concepts when simplifying documentation. Mirror is the
+agent; Daytona provides sandboxes; Harbor manages trials and runs task verifiers.
+Say "agents running in Daytona sandboxes." The connector runs inside the sandbox
+and forwards connections to the host-side proxy, which calls the model endpoint.
+Distinguish tasks, trials, and agents, and distinguish tunnel reconnection from
+agent request retries. Check descriptions against the implementation.
 - Docstrings are Google-style, three-double-quoted, opening with a one-line
 summary. Document parameters, results, and exceptions in `Args:`,
 `Returns:` (or `Yields:`), and `Raises:` sections with a hanging indent —

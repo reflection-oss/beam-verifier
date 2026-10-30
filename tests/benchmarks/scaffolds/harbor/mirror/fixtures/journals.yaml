@@ -1,0 +1,47 @@
+tool_turns:
+- chat:
+    user: {content: Fix the test.}
+- chat:
+    assistant:
+      content: Running ls.
+      reasoningContent: Look first.
+      toolCalls:
+      - id: call_1
+        function: {name: bash, arguments: '{"command": "ls"}'}
+    usage: {promptTokens: '120', completionTokens: '8'}
+- chat:
+    tool: {toolCallId: call_1, content: README.md}
+- chat:
+    tool: {toolCallId: call_9, content: stray}
+- log: {level: warning, text: context too long; compacting}
+- contextWindow:
+    systemPrompt: You are Mirror.
+    compaction: {summary: Listed the files.}
+- chat:
+    assistant: {content: Done.}
+counts_summary_usage_once_without_recounting_retained_turns:
+- &retained_turn
+  chat:
+    assistant: {content: Started the task.}
+    usage: {promptTokens: '100', completionTokens: '8', cachedTokens: '40'}
+- contextWindow:
+    compaction:
+      summary: The task is in progress.
+      recent:
+      - *retained_turn
+      usage: {promptTokens: '20', completionTokens: '3', cachedTokens: '5'}
+- chat:
+    assistant: {content: Done.}
+    usage: {promptTokens: '10', completionTokens: '2', cachedTokens: '2'}
+preserves_background_results_and_extension_messages_in_order:
+- chat:
+    user: {content: Run the background job.}
+- chat:
+    assistant: {content: The job is running.}
+- taskResult: {taskId: job-1, toolName: bash, success: true, content: Job completed.}
+- extension:
+    modelMessage: {content: Check the generated file.}
+- extension:
+    uiMessage: {content: Not model-visible.}
+- chat:
+    assistant: {content: The file is correct.}

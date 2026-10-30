@@ -1,0 +1,184 @@
+eval:
+  created: '2026-01-01T00:00:00+00:00'
+  task: offline
+  dataset: {}
+  model: openai-api/beam-verifier/m
+  config: {}
+logs:
+  empty: {status: success}
+  scored:
+    status: success
+    results:
+      scores:
+      - name: s
+        scorer: s
+        metrics:
+          accuracy: {name: accuracy, value: 0.9}
+    samples: null
+    reductions: null
+  grouped:
+    status: success
+    results:
+      scores:
+      - name: s
+        scorer: s
+        metrics:
+          live_simple_acc:
+            name: live_simple_acc
+            value: 0.8
+            params: &grouped_accuracy
+              metric:
+                type: metric
+                name: accuracy
+                params: {}
+              group_key: category_name
+              name_template: '{group_name}_acc'
+          sql_acc:
+            name: sql_acc
+            value: 0.2
+            params: *grouped_accuracy
+          all:
+            name: all
+            value: 0.5
+            params: *grouped_accuracy
+          live_simple_sterr:
+            name: live_simple_sterr
+            value: 0.04
+            params: &grouped_stderr
+              metric:
+                type: metric
+                name: stderr
+                params: {}
+              group_key: category_name
+              name_template: '{group_name}_sterr'
+          sql_sterr:
+            name: sql_sterr
+            value: 0.03
+            params: *grouped_stderr
+          all2:
+            name: all
+            value: 0.05
+            params: *grouped_stderr
+    samples:
+    - id: live_simple_0
+      epoch: 1
+      input: q
+      target: t
+      scores:
+        scorer: {value: 1.0}
+      metadata: {category_name: live_simple}
+    - id: sql_0
+      epoch: 1
+      input: q
+      target: t
+      scores:
+        scorer: {value: 1.0}
+      metadata: {category_name: sql}
+    reductions: null
+  bare_group_names:
+    status: success
+    results:
+      scores:
+      - name: s
+        scorer: s
+        metrics:
+          live_simple:
+            name: live_simple
+            value: 0.8
+            params: &bare_group_accuracy
+              metric:
+                type: metric
+                name: accuracy
+                params: {}
+              group_key: category_name
+              name_template: '{group_name}'
+          sql:
+            name: sql
+            value: 0.2
+            params: *bare_group_accuracy
+          all:
+            name: all
+            value: 0.5
+            params: *bare_group_accuracy
+    samples: null
+    reductions: null
+  multiple_group_keys:
+    status: success
+    results:
+      scores:
+      - name: s
+        scorer: s
+        metrics:
+          math_acc:
+            name: math_acc
+            value: 0.8
+            params:
+              metric:
+                type: metric
+                name: accuracy
+                params: {}
+              group_key: category
+              name_template: '{group_name}_acc'
+          easy_rate:
+            name: easy_rate
+            value: 0.6
+            params:
+              metric:
+                type: metric
+                name: accuracy
+                params: {}
+              group_key: difficulty
+              name_template: '{group_name}_rate'
+    samples:
+    - id: s0
+      epoch: 1
+      input: q
+      target: t
+      scores:
+        scorer: {value: 1.0}
+      metadata: {category: math, difficulty: easy}
+    reductions: null
+requests:
+- id: graded-reply-dropped
+  messages:
+  - {content: sys, role: system}
+  - {content: q, role: user}
+  - {content: a, role: assistant}
+  expected: [system, user]
+- id: interior-turns-kept
+  messages:
+  - {content: q1, role: user}
+  - {content: a1, role: assistant}
+  - {content: q2, role: user}
+  - {content: a2, role: assistant}
+  expected: [user, assistant, user]
+replies:
+- id: reasoning-split-from-answer
+  messages:
+  - content:
+    - {reasoning: thinking hard, type: reasoning}
+    - {text: 'ANSWER: 277', type: text}
+    role: assistant
+  expected: ['ANSWER: 277', thinking hard, null]
+- id: plain-string-content
+  messages:
+  - {content: plain reply, role: assistant}
+  expected: [plain reply, null, null]
+- id: tool-calls-are-the-answer
+  messages:
+  - content: []
+    tool_calls:
+    - id: c1
+      function: get_weather
+      arguments: {city: Paris}
+    role: assistant
+  expected:
+  - ''
+  - null
+  - - id: c1
+      function: get_weather
+      arguments: {city: Paris}
+- id: no-assistant-turn
+  messages:
+  - {content: q, role: user}
+  expected: ['', null, null]

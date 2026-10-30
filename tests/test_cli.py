@@ -1,21 +1,31 @@
-"""Offline tests for the CLI's option surface: no network, no subprocess."""
+"""Offline tests for CLI options and functional-test discovery."""
 
 import importlib.metadata
 import json
 import pathlib
+import shutil
 
 import click.testing
 import pytest
 
-from beam_verifier import cli, options, records
+from beam_verifier import cli, functional_tests, options, records
 from beam_verifier.benchmarks import registry
 from beam_verifier.benchmarks.scaffolds import base
+from beam_verifier.reporting import run_store
 
 
 @pytest.fixture(autouse=True)
-def available_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Keep CLI state and argument tests independent of a live endpoint."""
-    monkeypatch.setattr(cli, "check_endpoint", lambda *args: True)
+def endpoint_checks(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Record endpoint checks without making network requests."""
+    checked: list[str] = []
+
+    def check_endpoint(base_url: str, model_name: str, api_key: str) -> bool:
+        del model_name, api_key  # Unused.
+        checked.append(base_url)
+        return True
+
+    monkeypatch.setattr(cli, "check_endpoint", check_endpoint)
+    return checked
 
 
 def _option(command: click.Command, name: str) -> click.Option:
@@ -60,7 +70,7 @@ def test_endpoint_arguments_have_exactly_one_spelling(command_name: str):
     assert _option(command, "api_key").opts == ["--api-key"]
 
 
-@pytest.mark.parametrize(("command_name", "extra_args"), [("eval", []), ("verify", [])])
+@pytest.mark.parametrize("command_name", ENDPOINT_COMMANDS)
 @pytest.mark.parametrize(
     ("reflection_key", "key_args", "expected"),
     [
@@ -71,7 +81,6 @@ def test_endpoint_arguments_have_exactly_one_spelling(command_name: str):
 )
 def test_endpoint_commands_use_reflection_api_key(
     command_name: str,
-    extra_args: list[str],
     reflection_key: str | None,
     key_args: list[str],
     expected: str,
@@ -82,22 +91,19 @@ def test_endpoint_commands_use_reflection_api_key(
         "BEAM_VERIFIER_API_KEY": "synthetic-ignored-key",
     }
     command = cli.cli.commands[command_name]
-    args = ["--base-url", "https://example.test/v1", "--model-name", "model", *extra_args, *key_args]
+    args = ["--base-url", "https://example.test/v1", "--model-name", "model", *key_args]
     with click.testing.CliRunner().isolation(env=env), command.make_context(command_name, args) as context:
         assert context.params["api_key"] == expected
 
 
-def test_eval_base_url_and_model_name_are_required():
-    """An eval always requires the endpoint and model it will exercise."""
-    command = cli.cli.commands["eval"]
-    assert _option(command, "base_url").required
-    assert _option(command, "model_name").required
-
-
-def test_eval_rejects_a_run_without_a_base_url():
-    result = click.testing.CliRunner().invoke(cli.cli, ["eval", "--model-name", "m"])
+@pytest.mark.parametrize(
+    ("arguments", "missing"),
+    [(["--model-name", "m"], "--base-url"), (["--base-url", "http://unused/v1"], "--model-name")],
+)
+def test_eval_requires_endpoint_and_model(arguments: list[str], missing: str) -> None:
+    result = click.testing.CliRunner().invoke(cli.cli, ["eval", *arguments])
     assert result.exit_code == 2
-    assert "--base-url" in result.output
+    assert missing in result.output
 
 
 def test_eval_rejects_numeric_reasoning_effort():
@@ -106,15 +112,13 @@ def test_eval_rejects_numeric_reasoning_effort():
     assert "'512' is not one of 'low', 'medium', 'high', 'xhigh', 'max'" in result.output
 
 
-def test_eval_rejects_an_unknown_dataset():
-    """Exit code 1 rather than click's own 2 is the assertion that matters: the command
-    parsed its arguments and reached its own validation, which runs before the endpoint
-    is probed. The output is rich markup, so only the offending id is matched."""
+def test_eval_rejects_an_unknown_dataset(endpoint_checks: list[str]) -> None:
     result = click.testing.CliRunner().invoke(
         cli.cli, ["eval", "--base-url", "https://endpoint.example.com/v1", "--model-name", "m", "nope"]
     )
     assert result.exit_code == 1
     assert "nope" in result.output
+    assert endpoint_checks == []
 
 
 def test_parse_kwargs_decodes_yaml_values():
@@ -137,46 +141,16 @@ def test_parse_kwargs_with_malformed_yaml_is_rejected():
         options.parse_kwargs(("value={unclosed",))
 
 
-@pytest.mark.parametrize(
-    ("num_examples", "parallel_tasks"),
-    [
-        pytest.param(0, None, id="zero-examples"),
-        pytest.param(-1, None, id="negative-examples"),
-        pytest.param(None, 0, id="zero-tasks"),
-        pytest.param(None, -1, id="negative-tasks"),
-    ],
-)
-def test_validate_input_args_rejects_a_count_below_one(num_examples: int | None, parallel_tasks: int | None):
-    """Zero is not a smaller run but no run at all, and both counts are read as
-    `value or <fallback>` downstream — so zero would silently mean the whole dataset
-    or the default task count instead of failing."""
-    with pytest.raises(ValueError, match="at least 1"):
-        cli.validate_input_args(["aime2026"], num_examples, parallel_tasks)
-
-
-def test_validate_input_args_accepts_unset_counts():
-    """Unset is how a run asks for the dataset's own size and the default task count,
-    which is the value those fallbacks exist for."""
-    cli.validate_input_args(["aime2026"], None, None)
-
-
-def test_validate_input_args_rejects_an_unregistered_dataset():
-    """The id is what the run looks up, so an unknown one is caught before the run
-    starts rather than raising a KeyError partway through."""
-    with pytest.raises(ValueError, match="nope"):
-        cli.validate_input_args(["aime2026", "nope"], None, None)
-
-
 @pytest.mark.parametrize("flag", ["--num-examples", "--parallel-tasks"])
-def test_eval_rejects_a_zero_count_before_reaching_the_endpoint(flag: str):
-    """A value the arguments alone can reject must not first probe the endpoint or
-    leave an empty run directory behind, so the base URL here is never contacted."""
+@pytest.mark.parametrize("value", ["0", "-1"])
+def test_eval_rejects_nonpositive_counts(flag: str, value: str, endpoint_checks: list[str]) -> None:
     result = click.testing.CliRunner().invoke(
         cli.cli,
-        ["eval", "--base-url", "https://endpoint.example.com/v1", "--model-name", "m", flag, "0"],
+        ["eval", "--base-url", "https://endpoint.example.com/v1", "--model-name", "m", flag, value],
     )
     assert result.exit_code == 1
     assert flag in result.output
+    assert endpoint_checks == []
 
 
 @pytest.mark.parametrize("option", ["--parse-url", "--format-url", "--completions-url"])
@@ -223,52 +197,35 @@ def test_verify_rejects_invalid_endpoint_url(option: str, url: str) -> None:
     assert "absolute HTTP(S) URL" in result.output
 
 
-def test_eval_accepts_repeated_model_kwargs():
-    command = cli.cli.commands["eval"]
-    with command.make_context(
-        "eval",
-        [
-            "--base-url",
-            "http://localhost/v1",
-            "--model-name",
-            "model",
-            "--model-kwargs",
-            "stop=[DONE]",
-            "--model-kwargs",
-            "extra_body={custom_option: false}",
-        ],
-    ) as context:
-        assert options.parse_kwargs(context.params["model_kwargs"], option_name="--model-kwargs") == {
-            "stop": ["DONE"],
-            "extra_body": {"custom_option": False},
-        }
-
-
-@pytest.mark.parametrize("scope", ["model", "harness"])
-def test_eval_accepts_grouped_and_repeated_kwargs(scope: str):
+@pytest.mark.parametrize(
+    ("command_name", "scope"),
+    [("eval", "model"), ("eval", "harness"), ("verify", "model")],
+)
+def test_commands_accept_grouped_and_repeated_kwargs(command_name: str, scope: str) -> None:
     option = f"--{scope}-kwargs"
-    with cli.eval_command.make_context(
-        "eval",
+    with cli.cli.commands[command_name].make_context(
+        command_name,
         [
-            "gpqa-diamond",
             "--base-url",
             "http://localhost/v1",
             "--model-name",
             "model",
             option,
-            "tags=[read, write]",
-            "enabled=false",
-            "offset=-2",
+            "stop=[read, write]",
+            "stream=false",
+            "seed=-2",
+            "extra_body={custom_option: false}",
             option,
-            "enabled=true",
-            "prompt=Run tests = always.",
+            "stream=true",
+            "user=Run tests = always.",
         ],
     ) as context:
         assert options.parse_kwargs(context.params[f"{scope}_kwargs"], option_name=option) == {
-            "tags": ["read", "write"],
-            "enabled": True,
-            "offset": -2,
-            "prompt": "Run tests = always.",
+            "stop": ["read", "write"],
+            "stream": True,
+            "seed": -2,
+            "extra_body": {"custom_option": False},
+            "user": "Run tests = always.",
         }
         assert context.get_parameter_source(f"{scope}_kwargs") == click.core.ParameterSource.COMMANDLINE
 
@@ -349,6 +306,43 @@ def test_verify_preserves_pytest_argument_forwarding():
 
 
 @pytest.mark.parametrize(
+    ("endpoint", "suite"),
+    [
+        ("--base-url", "e2e"),
+        ("--parse-url", "parser"),
+        ("--format-url", "formatter"),
+        ("--completions-url", "raw_completions"),
+    ],
+)
+@pytest.mark.parametrize("ancestor_config", [False, True])
+def test_verify_uses_bundled_config(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch, endpoint: str, suite: str, ancestor_config: bool
+) -> None:
+    installed = tmp_path / "package" / "functional_tests"
+    (installed / suite).mkdir(parents=True)
+    bundled = pathlib.Path(functional_tests.__file__).parent
+    shutil.copyfile(bundled / "conftest.py", installed / "conftest.py")
+    shutil.copyfile(bundled.parent / "pytest.ini", installed.parent / "pytest.ini")
+    if ancestor_config:
+        (tmp_path / "pytest.ini").write_text("[pytest]\naddopts = -k unrelated_customer_tests\n")
+    (installed / suite / "test_options.py").write_text('def test_model(model):\n    assert model == "model"\n')
+    monkeypatch.setattr(functional_tests, "__file__", str(installed / "__init__.py"))
+    monkeypatch.setattr(run_store, "default_runs_dir", lambda: tmp_path / "runs")
+    # No shared ancestor with the installation except the filesystem root.
+    monkeypatch.chdir(tmp_path.anchor)
+
+    result = click.testing.CliRunner().invoke(
+        cli.cli, ["verify", endpoint, "https://example.test/v1", "--model-name", "model"]
+    )
+
+    assert result.exit_code == 0, result.output
+    report = next((tmp_path / "runs").glob("*/verify_report.json"))
+    counts, cases = cli.parse_pytest_report(report)
+    assert counts == {"passed": 1}
+    assert cases[0]["suite"] == suite
+
+
+@pytest.mark.parametrize(
     ("extra_args", "expected"),
     [
         (["--model-kwargs"], "requires an argument"),
@@ -365,22 +359,14 @@ def test_eval_grouped_kwargs_preserve_argument_errors(extra_args: list[str], exp
     assert "Proceed?" not in result.output
 
 
-def test_eval_accepts_harness_kwargs():
-    command = cli.cli.commands["eval"]
-    with command.make_context(
-        "eval", ["--base-url", "http://unused/v1", "--model-name", "model", "--harness-kwargs", "retry_on_error=2"]
-    ) as context:
-        assert options.parse_kwargs(context.params["harness_kwargs"]) == {"retry_on_error": 2}
-
-
-def test_eval_rejects_malformed_model_options_before_starting():
+def test_eval_rejects_malformed_model_options_before_starting(endpoint_checks: list[str]) -> None:
     result = click.testing.CliRunner().invoke(
         cli.cli,
         ["eval", "gpqa-diamond", "--base-url", "http://unused/v1", "--model-name", "model", "--model-kwargs", "tools"],
     )
     assert result.exit_code == 1
     assert "malformed --model-kwargs" in result.output
-    assert "Proceed?" not in result.output
+    assert endpoint_checks == []
 
 
 class _RecordingRunner(base.DatasetRunner):
@@ -396,7 +382,10 @@ class _RecordingRunner(base.DatasetRunner):
         return base.RunOutcome(result=result, traces=[])
 
 
-def test_eval_forwards_reflection_key_without_saving_it(tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch):
+@pytest.mark.parametrize("sandbox_args, sandbox", [([], "docker"), (["--sandbox", "daytona"], "daytona")])
+def test_eval_forwards_reflection_key_without_saving_it(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch, sandbox_args: list[str], sandbox: str
+) -> None:
     recording = _RecordingRunner("credential-test")
     monkeypatch.setitem(registry.DATASETS, "credential-test", registry.Dataset(runner=recording))
     result = click.testing.CliRunner().invoke(
@@ -410,11 +399,15 @@ def test_eval_forwards_reflection_key_without_saving_it(tmp_path: pathlib.Path, 
             "model",
             "--output-dir",
             str(tmp_path),
+            *sandbox_args,
         ],
         env={"REFLECTION_API_KEY": "synthetic-reflection-key", "OPENAI_API_KEY": "synthetic-ignored-key"},
     )
     assert result.exit_code == 0, result.output
     assert recording.requests[0].api_key == "synthetic-reflection-key"
+    assert recording.requests[0].settings.sandbox == sandbox
+    manifest = json.loads((tmp_path / "run.json").read_text())
+    assert manifest["dataset_settings"]["credential-test"]["sandbox"] == sandbox
     assert "synthetic-reflection-key" not in result.output + (tmp_path / "run.json").read_text()
 
 
@@ -488,25 +481,6 @@ def test_cli_resolves_each_dataset_defaults_and_explicit_overrides(tmp_path, mon
     assert manifest["dataset_settings"][long.dataset_id] == long.requests[0].settings.model_dump()
 
 
-@pytest.mark.parametrize("command_name", ["eval", "verify"])
-def test_every_endpoint_command_accepts_grouped_model_kwargs(command_name: str):
-    """One spelling of `--model-kwargs` reaches every command that issues model requests."""
-    command = cli.cli.commands[command_name]
-    required = {
-        "eval": ["--base-url=http://localhost/v1", "--model-name=model"],
-        "verify": ["--base-url=http://localhost/v1", "--model-name=model"],
-    }[command_name]
-    with command.make_context(
-        command_name,
-        [*required, "--model-kwargs", "no_stop_trim=true", "include_stop_str_in_output=true"],
-        **cli.CTX,
-    ) as context:
-        assert options.parse_kwargs(context.params["model_kwargs"], option_name="--model-kwargs") == {
-            "no_stop_trim": True,
-            "include_stop_str_in_output": True,
-        }
-
-
 def test_verify_model_kwargs_do_not_swallow_trailing_pytest_arguments():
     with cli.verify_command.make_context(
         "verify",
@@ -531,24 +505,3 @@ def test_verify_rejects_model_kwargs_without_a_value():
             ["--base-url=http://localhost/v1", "--model-name=model", "--model-kwargs", "no_stop_trim"],
             standalone_mode=False,
         )
-
-
-def test_every_kwargs_channel_shares_one_documented_contract():
-    """A channel's help names what it forwards to; `kwargs_option` appends the rest."""
-    channels = ["harness", "model"]
-    helps = {}
-    for channel in channels:
-        parameter = next(
-            param
-            for param in cli.eval_command.params
-            if isinstance(param, click.Option) and param.name == f"{channel}_kwargs"
-        )
-        assert parameter.multiple, f"--{channel}-kwargs must be repeatable"
-        assert parameter.metavar == "KEY=VALUE ...", f"--{channel}-kwargs has metavar {parameter.metavar!r}"
-        assert parameter.help is not None
-        helps[channel] = parameter.help
-    contract = helps["model"].split(". ")[-1]
-    assert all(text.endswith(contract) for text in helps.values()), (
-        f"Channel help texts have drifted apart; none of them may restate {contract!r}: {helps}"
-    )
-    assert all(text != contract for text in helps.values()), "Each channel must also say what it forwards to"

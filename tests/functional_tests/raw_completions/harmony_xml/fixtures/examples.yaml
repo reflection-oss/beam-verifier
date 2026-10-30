@@ -1,0 +1,183 @@
+analysis: <|channel|>analysis<|message|>think<|end|>
+final: <|start|>assistant<|channel|>final<|message|>answer<|return|>
+weather_tool: &weather_tool
+  type: function
+  function:
+    name: weather
+    parameters:
+      type: object
+      properties:
+        city: {type: string}
+        days: {type: integer}
+noargs_tool:
+  type: function
+  function:
+    name: noargs
+    parameters:
+      type: object
+      properties: {}
+weather_required_tool: &weather_required_tool
+  type: function
+  function:
+    name: weather
+    parameters:
+      type: object
+      properties:
+        city: {type: string}
+        days: {type: integer}
+      required: [city]
+truncation_is_a_status: ['', <|channel|>, <|channel|>analysis<|message|>partial, <|channel|>analysis<|message|>think<|end|><|start|>,
+  <|channel|>analysis<|message|>think<|end|><|start|>assistant<|channel|>final<|message|>partial, <|channel|>analysis<|message|>think<|end|><|start|>assistant
+    to=weather<|channel|>analysis <|constrain|>xml<|message|>]
+probe_attribution:
+- - <|channel|>commentary<|message|>x<|end|>
+  - []
+  - []
+  - channel_presence_validity
+- - <|channel|>final<|message|>x<|return|>
+  - []
+  - []
+  - mandatory_first_analysis
+- - <|channel|>analysis<|message|>think<|end|>
+  - []
+  - []
+  - no_trailing_reasoning
+- - <|channel|>analysis<|message|>think<|end|><|channel|>final<|message|>x<|return|>
+  - []
+  - []
+  - message_start_after_end
+- - <|channel|>analysis<|message|>x<|return|>
+  - []
+  - []
+  - reasoning_message_form
+- - <|channel|>analysis<|message|><|end|><|start|>assistant<|channel|>final<|message|>answer<|return|>
+  - []
+  - []
+  - reasoning_message_form
+- - <|channel|>analysis<|message|>think<|end|><|start|>assistant<|channel|>final<|message|>x<|end|>
+  - []
+  - []
+  - final_terminator
+- - <|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather<|message|>x<|call|>
+  - [weather]
+  - []
+  - tool_call_header_form
+- - <|channel|>analysis<|message|>think<|end|><|start|>assistant to=unknown<|channel|>analysis <|constrain|>xml<|message|><|call|>
+  - [weather]
+  - []
+  - tool_call_name_exists
+- - <|channel|>analysis<|message|>think<|end|><|start|>assistant to=refl.bash<|channel|>analysis <|constrain|>xml<|message|><|call|>
+  - [bash]
+  - [bash]
+  - tool_call_name_exists
+- - <|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather<|channel|>analysis <|constrain|>json<|message|><|call|>
+  - [weather]
+  - []
+  - codec_correctness
+- - <|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather<|channel|>analysis<|constrain|>xml<|message|><|call|>
+  - [weather]
+  - []
+  - codec_correctness
+- - <|channel|>analysis <|message|>x<|end|><|start|>assistant<|channel|>final<|message|>answer<|return|>
+  - []
+  - []
+  - channel_presence_validity
+- - <|channel|>analysis<|message|>think<|end|><|start|>assistant to=1weather<|channel|>analysis <|constrain|>xml<|message|><|call|>
+  - [weather]
+  - []
+  - tool_call_header_form
+- - |-
+    <|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter name="city">
+    a
+    </rfl:parameter>
+    <rfl:parameter name="city">
+    b
+    </rfl:parameter><|call|>
+  - [weather]
+  - []
+  - tool_call_xml_well_formed
+- - |-
+    <|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter name="ci ty">
+    x
+    </rfl:parameter><|call|>
+  - [weather]
+  - []
+  - tool_call_xml_well_formed
+- - <|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter
+    name="city">London</rfl:parameter><|call|>
+  - [weather]
+  - []
+  - tool_call_xml_well_formed
+- - <|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather<|channel|>analysis <|constrain|>xml<|message|><parameter
+    name="city">London</parameter><|call|>
+  - [weather]
+  - []
+  - tool_call_xml_well_formed
+- - <|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter
+    name="city">London<|call|>
+  - [weather]
+  - []
+  - tool_call_xml_well_formed
+- - |-
+    <|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter name="days">
+    3
+    </rfl:parameter><|call|>
+  - - *weather_required_tool
+  - []
+  - tool_call_parameter_required
+- - |-
+    <|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter name="units">
+    C
+    </rfl:parameter><|call|>
+  - - *weather_tool
+  - []
+  - tool_call_parameter_exists
+- - |-
+    <|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter name="days">
+    soon
+    </rfl:parameter><|call|>
+  - - *weather_tool
+  - []
+  - tool_call_parameter_types
+- - <|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather<|channel|>analysis <|constrain|>xml<|message|><|end|><|start|>assistant<|channel|>final<|message|>x<|return|>
+  - [weather]
+  - []
+  - grouping_placement
+- - <|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather<|channel|>analysis <|constrain|>xml<|message|><|call|><|start|>assistant<|channel|>final<|message|>answer<|return|>
+  - [weather]
+  - []
+  - grouping_placement
+- - <|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather<|channel|>analysis <|constrain|>xml<|message|><|call|><|start|>assistant
+    to=weather<|channel|>analysis <|constrain|>xml<|message|><|call|>
+  - [weather]
+  - []
+  - parallel_termination
+- - <|channel|>analysis<|message|>think<|end|><|start|>assistant<|channel|>final<|message|>answer<|return|>trailing
+  - []
+  - []
+  - unclassified
+eof_after_valid_header_fields_is_truncated: [<|channel|>analysis, <|channel|>analysis<|message|>think<|end|><|start|>assistant<|channel|>final,
+  <|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather, <|channel|>analysis<|message|>think<|end|><|start|>assistant
+    to=weather<|channel|>, <|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather<|channel|>analysis,
+  '<|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather<|channel|>analysis ', <|channel|>analysis<|message|>think<|end|><|start|>assistant
+    to=weather<|channel|>analysis <|constrain|>, <|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather<|channel|>analysis
+    <|constrain|>xml]
+shape_classification:
+- - <|channel|>analysis<|message|>think<|end|><|start|>assistant<|channel|>final<|message|>answer<|return|>
+  - []
+  - final_only
+- - <|channel|>analysis<|message|>think<|end|><|start|>assistant<|channel|>final<|message|>answer<|return|>
+  - [weather]
+  - no_call
+- - <|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather<|channel|>analysis <|constrain|>xml<|message|><|call|>
+  - [weather]
+  - single_tool
+- - <|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather<|channel|>analysis <|constrain|>xml<|message|><|end|><|start|>assistant
+    to=weather<|channel|>analysis <|constrain|>xml<|message|><|call|>
+  - [weather]
+  - parallel_tool
+shape_counts_attempted_frames_not_valid_ones:
+- [<|channel|>analysis<|message|>think<|end|><|start|>assistant to=unknown<|channel|>analysis <|constrain|>xml<|message|><|call|>,
+  single_tool]
+- [<|channel|>analysis<|message|>think<|end|><|start|>assistant to=weather<|channel|>analysis <|constrain|>xml<|message|><|end|><|start|>assistant
+    to=unknown<|channel|>analysis <|constrain|>xml<|message|><|call|>, parallel_tool]
