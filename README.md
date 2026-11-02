@@ -13,7 +13,7 @@ pre-defined settings, using [Mirror](https://github.com/reflection-oss/mirror) a
 
 `beam-verifier` integrates [InspectAI](https://github.com/UKGovernmentBEIS/inspect_ai) for GPQA-Diamond and AIME, and [Harbor](https://github.com/harbor-framework/harbor) for SWE-bench Pro.
 
-Mirror 0.1.8 is bundled with its own Linux x86-64/ARM64 runtime
+Mirror is bundled with its own Linux x86-64/ARM64 runtime
 for installation and execution inside task sandboxes.
 
 The only requirement is an OpenAI-compatible `/v1/chat/completions` endpoint.
