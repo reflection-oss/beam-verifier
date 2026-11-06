@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "beam-verifier"
-version = "0.1.0"
+version = "0.1.1"
 description = "Basic eval library: reproduce benchmark scores and verify endpoint behavior against any OpenAI-compatible endpoint."
 readme = "README.md"
 requires-python = ">=3.12"
