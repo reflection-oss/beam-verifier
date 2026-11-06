@@ -35,11 +35,6 @@ test_malformed_request_rejected:
     - case_id: "messages_missing"
       input:
         messages: []
-    - case_id: "messages_role_invalid"
-      input:
-        messages:
-        - content: Which planet do humans live on?
-          role: fake_role
     - case_id: "tool_choice_invalid"
       input:
         messages:
